@@ -1,0 +1,28 @@
+{
+  "name": "conversations-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@elastic/elasticsearch": "^8.0.0",
+    "async": "^3.2.3",
+    "axios": "^0.25.0",
+    "config": "^3.3.7",
+    "crypto": "^1.0.1",
+    "dotenv": "^16.0.0",
+    "express": "^4.17.2",
+    "node-cache": "^5.1.2",
+    "node-fetch": "^2.6.7",
+    "nodemon": "^2.0.15",
+    "oauth-1.0a": "^2.2.6",
+    "request": "^2.88.2",
+    "uuid": "^8.3.2",
+    "ws": "^8.5.0"
+  }
+}
