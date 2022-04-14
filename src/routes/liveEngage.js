@@ -33,7 +33,7 @@ router.get("/close-conversations", (req, res) => {
         from: 1641772800000 /*1644029518000*/,
         to: Date.now(),
       },
-      skillIds: [3375905130],
+      skillIds: [3072159530],
       status: ["OPEN"],
     };
     // 3375375430 GD-English-SupportBot-en-CA
@@ -56,25 +56,24 @@ router.get("/close-conversations", (req, res) => {
       const convosToClose = getApplicableForClosingConvos(arr_data);
       console.log(`Total conversations: ${convosToClose.conversations.length}`);
 
-      // const closeBot = new CloseConversationBot(
-      //   conf,
-      //   convosToClose.conversations
-      // );
+      const closeBot = new CloseConversationBot(
+        conf,
+        convosToClose.conversations
+      );
 
-      // const data = await closeBot.init();
+      const closedConversations = await closeBot.closeConversations();
 
-      // const totalJoined = closeBot.totalJoinedConvos;
-      // const totalClosed = closeBot.totalClosedConvos;
-      // const allClosed = closeBot.closedConvos;
+      const totalJoined = closeBot.totalJoinedConvos;
+      const totalClosed = closeBot.totalClosedConvos;
 
-      // console.log(`Total Joined: ${totalJoined}, Total Closed: ${totalClosed}`);
-      // console.log(`Closed Convos: ${JSON.stringify(data)}`);
+      console.log(`Total Joined: ${totalJoined}, Total Closed: ${totalClosed}`);
+      //console.log(`Closed Convos: ${JSON.stringify(closedConversations)}`);
 
-      // indexDataIntoElastic(
-      //   convosToClose.convosToPersistInElastic,
-      //   CONST.CLOSEDCONVOSELASTICBODYINDEX,
-      //   CONST.CLOSEDCONVOSELASTICINDEXNAME
-      // );
+      indexDataIntoElastic(
+        closedConversations,
+        CONST.CLOSEDCONVOSELASTICBODYINDEX,
+        CONST.CLOSEDCONVOSELASTICINDEXNAME
+      );
 
       return res.json(convosToClose.idsToClose);
     } else {
@@ -138,13 +137,12 @@ const isConvoApplicable = (messageRecords) => {
   const { timeL } = messageRecords[messageRecords.length - 1] || 0;
   const timeNowMillis = Date.now();
 
-  // return (
-  //   Math.ceil(timeNowMillis / 1000 - timeL / 1000) >= hoursNeededToCloseConvo
-  // );
-
-  const num1 = timeNowMillis / 1000 / 60 / 60;
-  const num2 = timeL / 1000 / 60 / 60;
-  return Math.ceil(num1 - num2) >= hoursNeededToCloseConvo;
+  const timeNowInHours = timeNowMillis / 1000 / 60 / 60;
+  const lastconvoMessageTimeInHours = timeL / 1000 / 60 / 60;
+  return (
+    Math.ceil(timeNowInHours - lastconvoMessageTimeInHours) >=
+    hoursNeededToCloseConvo
+  );
 };
 
 const indexDataIntoElastic = async (

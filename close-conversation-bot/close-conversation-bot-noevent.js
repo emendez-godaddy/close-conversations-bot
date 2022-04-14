@@ -25,7 +25,7 @@ class CloseConversationBot extends Agent {
     return this._closedConvos;
   }
 
-  async init() {
+  async closeConversations() {
     return new Promise((r, reject) => {
       this.on("connected", async (message) => {
         clearTimeout(this._retryConnection);
@@ -51,9 +51,6 @@ class CloseConversationBot extends Agent {
         } catch (err) {
           console.log(err);
         }
-
-        // .then((e) => {
-        // });
       });
 
       // Handle socket closed
@@ -107,11 +104,6 @@ class CloseConversationBot extends Agent {
               writeErrorsToFile(failedToJoin, "JoinConvoErrors.json");
             }
           } else {
-            // console.log(
-            //   `joinConversation: Joined conversation ${JSON.stringify(
-            //     conversation.conversationId
-            //   )}, ${JSON.stringify(resp)}`
-            // );
             this._totalJoinedConvos += 1;
             await this.closeConversation(conversation);
             resolve();
@@ -142,12 +134,7 @@ class CloseConversationBot extends Agent {
               e,
             };
             writeErrorsToFile(failedToClose, "CloseConvoErrors.json");
-            //console.error(`closeConversation: ${JSON.stringify(e)}`);
-            // setTimeout(() => {
-            //   this.closeConversation(conversationId);
-            // }, 5000);
           } else {
-            //console.log(`closeConversation successful ${c}`);
             this._totalClosedConvos += 1;
             this._closedConvos.push(conversation);
             resolve();
@@ -156,6 +143,7 @@ class CloseConversationBot extends Agent {
       );
     });
   }
+
   async processAllConvos(allConversations) {
     const convosToDividePerBatch = [...allConversations];
     // let batchPromises = [];
@@ -174,19 +162,9 @@ class CloseConversationBot extends Agent {
         console.log("Cerre conversacion");
       }
       // }, 5000);
-
-      // console.log(
-      //   `Total Joined: ${this._totalJoinedConvos}, Total Closed: ${this._totalClosedConvos}`
-      // );
     }
-
-    // console.log("Ejecutando promise", batchPromises.length);
     return Promise.resolve();
   }
-
-  // async waitForProcessing(allConvos) {
-  //   this.processAllConvos(allConvos);
-  // }
 }
 
 const writeErrorsToFile = async (info, filename) => {
