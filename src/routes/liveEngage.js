@@ -20,8 +20,16 @@ router.get("/close-conversations", (req, res) => {
   const PAGE_SIZE = 50;
   const arr_data = [];
   let offset = 0;
+  let requestPromises = [];
 
-  callApiService(offset, conf.accountId, arr_data, PAGE_SIZE, res);
+  callApiService(
+    offset,
+    conf.accountId,
+    arr_data,
+    PAGE_SIZE,
+    requestPromises,
+    res
+  );
 });
 
 async function callApiService(
@@ -29,6 +37,7 @@ async function callApiService(
   accountId,
   convArray,
   pageSize,
+  requestPromises,
   response
 ) {
   const url = `https://va.msghist.liveperson.net/messaging_history/api/account/${accountId}/conversations/search?offset=${offset}&limit=50&source=GD_AgentUI_History`;
@@ -39,22 +48,13 @@ async function callApiService(
 
   const body = {
     start: {
-      from: 1647708642000 /*1644029518000*/,
+      from: 1646870400000 /*1644029518000*/,
       to: Date.now(),
     },
     skillIds: [3072159530],
     status: ["OPEN"],
   };
-  // 3375375430 GD-English-SupportBot-en-CA
-  // 3721371038 Test Skill
-  // 2327456130, 2327443530, 2327447030, 2327444230, 2327452930 LATAM
-  // en-IN Skills
-  // [
-  //   2494897630, 2550927830, 2582203130, 2582203330, 2582223530, 2582224130,
-  //   2582273830, 2582274430, 2582275430, 2582275730, 2582276730, 2582276930,
-  //   2582277130, 3078434130, 3295634330, 3484006930, 3532071930, 3604629338,
-  //   3611964238, 3643309338, 3643554038,
-  // ]
+
   const data = await api(options, {}, body);
 
   convArray.push(...data.conversationHistoryRecords);
@@ -84,9 +84,18 @@ async function callApiService(
     //   CONST.CLOSEDCONVOSELASTICINDEXNAME
     // );
 
+    //Saludos
+    //kellksoek
     return response.json(convosToClose.idsToClose);
   } else {
-    callApiService(offset, accountId, convArray, pageSize, response);
+    callApiService(
+      offset,
+      accountId,
+      convArray,
+      pageSize,
+      requestPromises,
+      response
+    );
   }
 }
 
