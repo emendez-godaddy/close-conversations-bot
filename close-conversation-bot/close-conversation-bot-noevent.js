@@ -1,18 +1,46 @@
 const Agent = require("../lib/AgentSDK");
 const fs = require("fs");
-const { resolve } = require("path");
-const { reject } = require("async");
 //let convosIdsToClose = ["e9d7260e-2bd3-44fa-abf7-773610c1a2ed"];
 
 class CloseConversationBot extends Agent {
-  constructor(config, convosToClose) {
+  constructor(config) {
     super(config);
-    this.convosToClose = convosToClose;
+    this.convosToClose = [];
     this.totalConvosPerBatch = 50;
     this._totalJoinedConvos = 0;
     this._totalClosedConvos = 0;
     this._closedConvos = [];
     //this.init();
+    this.on("connected", (message) => {
+      clearTimeout(this._retryConnection);
+      console.log(JSON.stringify(message));
+
+      // Get server clock at a regular interval in order to keep the connection alive
+      this._pingClock = setInterval(() => {
+        getClock(this);
+      }, 60000);
+
+      // Set bot to away
+      this.setAgentState({ availability: "AWAY" }, (e, resp) => {
+        if (e) {
+          console.error(`setAgentState: ${JSON.stringify(e)}`);
+        } else {
+          console.log(`setAgentState: ${JSON.stringify(resp)}`);
+        }
+      });
+    });
+
+    // Handle socket closed
+    this.on("closed", (data) => {
+      clearInterval(this._pingClock);
+      console.error(`socket closed: ${JSON.stringify(data)}`);
+      this.reconnect();
+    });
+
+    // Handle errors
+    this.on("error", (err) => {
+      console.error(`generic: ${err} ${JSON.stringify(err.message)}`);
+    });
   }
 
   get totalJoinedConvos() {
@@ -24,46 +52,19 @@ class CloseConversationBot extends Agent {
   get closedConvos() {
     return this._closedConvos;
   }
+  set conversationsToBeClosed(convos) {
+    this.convosToClose.push(...convos);
+  }
 
   async closeConversations() {
-    return new Promise((r, reject) => {
-      this.on("connected", async (message) => {
-        clearTimeout(this._retryConnection);
-        console.log(JSON.stringify(message));
-
-        // Get server clock at a regular interval in order to keep the connection alive
-        this._pingClock = setInterval(() => {
-          getClock(this);
-        }, 60000);
-
-        // Set bot to away
-        this.setAgentState({ availability: "AWAY" }, (e, resp) => {
-          if (e) {
-            console.error(`setAgentState: ${JSON.stringify(e)}`);
-          } else {
-            console.log(`setAgentState: ${JSON.stringify(resp)}`);
-          }
-        });
-        // Iterate through conversationId's and close conversations
-        try {
-          await this.processAllConvos(this.convosToClose);
-          r(this._closedConvos);
-        } catch (err) {
-          console.log(err);
-        }
-      });
-
-      // Handle socket closed
-      this.on("closed", (data) => {
-        clearInterval(this._pingClock);
-        console.error(`socket closed: ${JSON.stringify(data)}`);
-        this.reconnect();
-      });
-
-      // Handle errors
-      this.on("error", (err) => {
-        console.error(`generic: ${err} ${JSON.stringify(err.message)}`);
-      });
+    return new Promise(async (r, reject) => {
+      // Iterate through conversationId's and close conversations
+      try {
+        await this.processAllConvos(this.convosToClose);
+        r(this._closedConvos);
+      } catch (err) {
+        console.log(err);
+      }
     }).catch((e) => {
       throw e;
     });
@@ -101,7 +102,8 @@ class CloseConversationBot extends Agent {
                 conversation,
                 e,
               };
-              writeErrorsToFile(failedToJoin, "JoinConvoErrors.json");
+              //writeErrorsToFile(failedToJoin, "JoinConvoErrors.json");
+              console.log(failedToJoin.e);
             }
           } else {
             this._totalJoinedConvos += 1;

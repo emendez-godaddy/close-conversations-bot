@@ -1,4 +1,5 @@
 const express = require("express");
+const cron = require("node-cron");
 const { api } = require("../services/provider");
 const router = express.Router();
 const CloseConversationBot = require("../../close-conversation-bot/close-conversation-bot-noevent");
@@ -7,6 +8,7 @@ const CONST = require("../../lib/Const");
 const fs = require("fs");
 
 const elastic = new ElasticSearch();
+
 const conf = {
   accountId: process.env.ACCOUNT_ID,
   username: process.env.USERNAME,
@@ -15,6 +17,15 @@ const conf = {
   accessToken: process.env.BOT_ACCESS_TOKEN,
   accessTokenSecret: process.env.BOT_ACCESS_TOKEN_SECRET,
 };
+
+const params = {
+  hoursNeededToCloseConvo: 72,
+  dateFromEpoch: 1646870400000,
+  skillIds: CONST.ENINSKILLS,
+  status: ["OPEN"],
+};
+
+const closeBot = new CloseConversationBot(conf);
 
 router.get("/close-conversations", (req, res) => {
   const PAGE_SIZE = 50;
@@ -48,11 +59,13 @@ async function callApiService(
 
   const body = {
     start: {
-      from: 1646870400000 /*1644029518000*/,
-      to: Date.now(),
+      from: params.dateFromEpoch,
+      to: timeIntervalExcludingHoursToCloseConvo(
+        params.hoursNeededToCloseConvo
+      ),
     },
-    skillIds: [3072159530],
-    status: ["OPEN"],
+    skillIds: params.skillIds,
+    status: params.status,
   };
 
   const data = await api(options, {}, body);
@@ -65,18 +78,15 @@ async function callApiService(
     const convosToClose = getApplicableForClosingConvos(convArray);
     console.log(`Total conversations: ${convosToClose.conversations.length}`);
 
-    // const closeBot = new CloseConversationBot(
-    //   conf,
-    //   convosToClose.conversations
-    // );
+    closeBot.conversationsToBeClosed = convosToClose.conversations;
 
-    // const closedConversations = await closeBot.closeConversations();
+    const closedConversations = await closeBot.closeConversations();
 
-    // const totalJoined = closeBot.totalJoinedConvos;
-    // const totalClosed = closeBot.totalClosedConvos;
+    const totalJoined = closeBot.totalJoinedConvos;
+    const totalClosed = closeBot.totalClosedConvos;
 
-    // console.log(`Total Joined: ${totalJoined}, Total Closed: ${totalClosed}`);
-    //console.log(`Closed Convos: ${JSON.stringify(closedConversations)}`);
+    console.log(`Total Joined: ${totalJoined}, Total Closed: ${totalClosed}`);
+    console.log(`Closed Convos: ${JSON.stringify(closedConversations)}`);
 
     // indexDataIntoElastic(
     //   closedConversations,
@@ -84,8 +94,6 @@ async function callApiService(
     //   CONST.CLOSEDCONVOSELASTICINDEXNAME
     // );
 
-    //Saludos
-    //kellksoek
     return response.json(convosToClose.idsToClose);
   } else {
     callApiService(
@@ -135,15 +143,13 @@ const getApplicableForClosingConvos = (convoArray) => {
 };
 
 const isConvoApplicable = (messageRecords) => {
-  const hoursNeededToCloseConvo = 48;
   const { timeL } = messageRecords[messageRecords.length - 1] || 0;
-  const timeNowMillis = Date.now();
 
-  const timeNowInHours = timeNowMillis / 1000 / 60 / 60;
+  const timeNowInHours = Date.now() / 1000 / 60 / 60;
   const lastconvoMessageTimeInHours = timeL / 1000 / 60 / 60;
   return (
     Math.ceil(timeNowInHours - lastconvoMessageTimeInHours) >=
-    hoursNeededToCloseConvo
+    params.hoursNeededToCloseConvo
   );
 };
 
@@ -183,6 +189,10 @@ const writeErrorsToFile = async (info, filename) => {
   } catch (error) {
     console.error("Error occured while writting the file", error);
   }
+};
+
+const timeIntervalExcludingHoursToCloseConvo = (hoursToClose) => {
+  return Date.now() - hoursToClose * 60 * 60 * 1000;
 };
 
 // Route to test elastic functions
